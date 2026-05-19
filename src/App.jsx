@@ -37,15 +37,12 @@ export default function InventorySalesCalculator() {
   const [employees, setEmployees] = React.useState([]);
   const [employee, setEmployee] = React.useState(saved?.employee || "");
   const [mode, setMode] = React.useState(saved?.mode || "Day");
-
   const [allItems, setAllItems] = React.useState([]);
   const [itemsLoading, setItemsLoading] = React.useState(true);
-
   const [cart, setCart] = React.useState(saved?.cart || []);
   const [shiftTotal, setShiftTotal] = React.useState(saved?.shiftTotal || 0);
   const [shiftItems, setShiftItems] = React.useState(saved?.shiftItems || {});
   const [showShift, setShowShift] = React.useState(saved?.showShift || false);
-
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState("");
 
@@ -94,7 +91,6 @@ export default function InventorySalesCalculator() {
   const canSeeItem = (item) => {
     const employeeRankValue = RANK_VALUE[currentRank] || 1;
     const itemRankValue = RANK_VALUE[item.minRank] || 1;
-
     return employeeRankValue >= itemRankValue;
   };
 
@@ -179,8 +175,6 @@ export default function InventorySalesCalculator() {
     const saleData = {
       type: "sale",
       employee,
-      rank: currentRank,
-      mode,
       total: cartTotal,
       items: cart.map((item) => ({
         name: item.name,
@@ -240,7 +234,6 @@ export default function InventorySalesCalculator() {
     const shiftData = {
       type: "shift_end",
       employee,
-      rank: currentRank,
       shiftTotal,
       items: Object.values(shiftItems)
     };
@@ -252,7 +245,6 @@ export default function InventorySalesCalculator() {
       setShiftTotal(0);
       setShiftItems({});
       setShowShift(false);
-
       setStatus("Shift ended and sent.");
       localStorage.removeItem("inventory_shift");
     } catch (err) {
@@ -269,14 +261,13 @@ export default function InventorySalesCalculator() {
     setShiftItems({});
     setCart([]);
     setStatus("");
-
     localStorage.removeItem("inventory_shift");
   };
 
   const copyShift = async () => {
     const lines = Object.values(shiftItems).map(
       (item) =>
-        `${item.name} ${item.mode} x${item.qty} @ $${item.price} - $${item.total.toLocaleString()}`
+        `${item.name} [${item.mode}] x${item.qty} ($${item.price}) - $${item.total.toLocaleString()}`
     );
 
     const text =
@@ -301,9 +292,7 @@ export default function InventorySalesCalculator() {
   const renderItems = (items) =>
     filteredItems(items).map((item) => {
       const price = getItemPrice(item);
-
       const descriptionText = String(item.description || "").trim();
-
       const hasDescription =
         descriptionText !== "" && descriptionText !== "0";
 
@@ -388,9 +377,7 @@ export default function InventorySalesCalculator() {
               <div key={section.group}>
                 <h2 className="section-title">{section.group}</h2>
 
-                <div className="item-grid">
-                  {renderItems(section.items)}
-                </div>
+                <div className="item-grid">{renderItems(section.items)}</div>
               </div>
             ))}
           </main>
@@ -416,7 +403,7 @@ export default function InventorySalesCalculator() {
                 className="cart-row"
               >
                 <span>
-                  {item.name} {item.mode} x{item.qty}
+                  {item.name} [{item.mode}] x{item.qty}
                 </span>
 
                 <span className="money">
@@ -494,7 +481,7 @@ export default function InventorySalesCalculator() {
                     }}
                   >
                     <span>
-                      {item.name} {item.mode} x{item.qty}
+                      {item.name} [{item.mode}] x{item.qty}
                     </span>
 
                     <span className="money">
