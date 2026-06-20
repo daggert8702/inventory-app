@@ -264,25 +264,7 @@ export default function InventorySalesCalculator() {
     localStorage.removeItem("inventory_shift");
   };
 
-  const copyShift = async () => {
-    const lines = Object.values(shiftItems).map(
-      (item) =>
-        `${item.name} [${item.mode}] x${item.qty} ($${item.price}) - $${item.total.toLocaleString()}`
-    );
-
-    const text =
-      `EMPLOYEE: ${employee}\n` +
-      `RANK: ${currentRank}\n` +
-      `SHIFT TOTAL: $${shiftTotal.toLocaleString()}\n\nITEMS:\n` +
-      lines.join("\n");
-
-    try {
-      await navigator.clipboard.writeText(text);
-      alert("Shift copied!");
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  
 
   const filteredItems = (items) =>
     items.filter((item) =>
@@ -450,9 +432,7 @@ export default function InventorySalesCalculator() {
               Shift Earnings
             </button>
 
-            <button className="btn gray" onClick={copyShift}>
-              Copy Shift
-            </button>
+            
 
             <button className="btn red" onClick={endShift}>
               End Shift
