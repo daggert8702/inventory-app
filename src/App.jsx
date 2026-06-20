@@ -2,7 +2,7 @@ import React from "react";
 import "./App.css";
 
 const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxO8ydRJWye21OQj0O-lD9_5xkiRqjonW1xqKrQaQnOCyCa9F4eKq_YhkaJpQXluhu2/exec";
+  "https://script.google.com/macros/s/AKfycbwPKiV1fQukECduDGqlE8Q3axbAu89AB_nHCRK19QhVbdtppeM6AcWSjAl6013nwtDW/exec";
 
 const GROUP_ORDER = [
   "Digi Basics",
