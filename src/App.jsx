@@ -22,6 +22,16 @@ const RANK_VALUE = {
   Owner: 5
 };
 
+const DISCOUNTS = [
+  { label: "No Discount", value: 0 },
+  { label: "5% Discount", value: 5 },
+  { label: "10% Discount", value: 10 },
+  { label: "15% Discount", value: 15 },
+  { label: "20% Discount", value: 20 },
+  { label: "25% Discount", value: 25 },
+  { label: "50% Discount", value: 50 }
+];
+
 export default function InventorySalesCalculator() {
   const loadState = () => {
     try {
@@ -36,7 +46,11 @@ export default function InventorySalesCalculator() {
 
   const [employees, setEmployees] = React.useState([]);
   const [employee, setEmployee] = React.useState(saved?.employee || "");
+  const [secondaryEmployee, setSecondaryEmployee] = React.useState(
+    saved?.secondaryEmployee || ""
+  );
   const [mode, setMode] = React.useState(saved?.mode || "Day");
+  const [discount, setDiscount] = React.useState(saved?.discount || 0);
 
   const [allItems, setAllItems] = React.useState([]);
   const [itemsLoading, setItemsLoading] = React.useState(true);
@@ -49,11 +63,9 @@ export default function InventorySalesCalculator() {
   const [showDescriptions, setShowDescriptions] = React.useState(
     saved?.showDescriptions ?? true
   );
-
   const [compactCards, setCompactCards] = React.useState(
     saved?.compactCards ?? false
   );
-
   const [overrideRank, setOverrideRank] = React.useState(
     saved?.overrideRank ?? false
   );
@@ -93,7 +105,9 @@ export default function InventorySalesCalculator() {
       "inventory_shift",
       JSON.stringify({
         employee,
+        secondaryEmployee,
         mode,
+        discount,
         cart,
         shiftTotal,
         shiftItems,
@@ -105,7 +119,9 @@ export default function InventorySalesCalculator() {
     );
   }, [
     employee,
+    secondaryEmployee,
     mode,
+    discount,
     cart,
     shiftTotal,
     shiftItems,
@@ -118,13 +134,10 @@ export default function InventorySalesCalculator() {
   const canSeeItem = (item) => {
     const employeeRankValue = RANK_VALUE[currentRank] || 1;
     const itemRankValue = RANK_VALUE[item.minRank] || 1;
-
     return employeeRankValue >= itemRankValue;
   };
 
-  const visibleItems = overrideRank
-    ? allItems
-    : allItems.filter(canSeeItem);
+  const visibleItems = overrideRank ? allItems : allItems.filter(canSeeItem);
 
   const getItemPrice = (item) => {
     return mode === "Night" ? item.nightPrice : item.dayPrice;
@@ -132,7 +145,6 @@ export default function InventorySalesCalculator() {
 
   const addToCart = (item) => {
     const price = getItemPrice(item);
-
     const cartItem = {
       name: item.name,
       icon: item.icon,
@@ -176,10 +188,13 @@ export default function InventorySalesCalculator() {
     );
   };
 
-  const cartTotal = cart.reduce(
+  const subtotal = cart.reduce(
     (sum, item) => sum + item.price * item.qty,
     0
   );
+
+  const discountAmount = Math.round(subtotal * (Number(discount) / 100));
+  const cartTotal = subtotal - discountAmount;
 
   const sendToSheet = async (payload) => {
     const formData = new URLSearchParams();
@@ -196,7 +211,7 @@ export default function InventorySalesCalculator() {
     if (cart.length === 0) return;
 
     if (!employee) {
-      alert("Select an employee first.");
+      alert("Select a cashier first.");
       return;
     }
 
@@ -205,6 +220,10 @@ export default function InventorySalesCalculator() {
     const saleData = {
       type: "sale",
       employee,
+      secondaryEmployee,
+      subtotal,
+      discount: Number(discount),
+      discountAmount,
       total: cartTotal,
       items: cart.map((item) => ({
         name: item.name,
@@ -264,6 +283,7 @@ export default function InventorySalesCalculator() {
     const shiftData = {
       type: "shift_end",
       employee,
+      secondaryEmployee,
       shiftTotal,
       items: Object.values(shiftItems)
     };
@@ -340,42 +360,66 @@ export default function InventorySalesCalculator() {
 
         <div className="layout">
           <main>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "220px 180px auto",
-                gap: "12px"
-              }}
-            >
-              <select
-                className="search"
-                value={employee}
-                onChange={(e) => setEmployee(e.target.value)}
-              >
-                {employees.map((emp) => (
-                  <option key={emp.name} value={emp.name}>
-                    {emp.name} - {emp.rank}
-                  </option>
-                ))}
-              </select>
+            <div className="top-controls">
+              <div className="control-stack">
+                <select
+                  className="search"
+                  value={employee}
+                  onChange={(e) => setEmployee(e.target.value)}
+                >
+                  {employees.map((emp) => (
+                    <option key={emp.name} value={emp.name}>
+                      {emp.name} - {emp.rank}
+                    </option>
+                  ))}
+                </select>
 
-              <select
-                className="search"
-                value={mode}
-                onChange={(e) => setMode(e.target.value)}
-              >
-                <option value="Day">Day Prices</option>
-                <option value="Night">Night Prices</option>
-              </select>
+                <select
+                  className="search"
+                  value={secondaryEmployee}
+                  onChange={(e) => setSecondaryEmployee(e.target.value)}
+                >
+                  <option value="">No Secondary</option>
 
-              <div className="top-toggle-row">
+                  {employees.map((emp) => (
+                    <option key={emp.name} value={emp.name}>
+                      {emp.name} - {emp.rank}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="control-stack">
+                <select
+                  className="search"
+                  value={mode}
+                  onChange={(e) => setMode(e.target.value)}
+                >
+                  <option value="Day">Day Prices</option>
+                  <option value="Night">Night Prices</option>
+                </select>
+
+                <select
+                  className="search"
+                  value={discount}
+                  onChange={(e) => setDiscount(Number(e.target.value))}
+                >
+                  {DISCOUNTS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="toggle-column">
                 <label className="toggle-setting">
                   <input
                     type="checkbox"
-                    checked={showDescriptions}
-                    onChange={(e) => setShowDescriptions(e.target.checked)}
+                    checked={overrideRank}
+                    onChange={(e) => setOverrideRank(e.target.checked)}
                   />
-                  Descriptions
+                  Override Rank
                 </label>
 
                 <label className="toggle-setting">
@@ -390,10 +434,10 @@ export default function InventorySalesCalculator() {
                 <label className="toggle-setting">
                   <input
                     type="checkbox"
-                    checked={overrideRank}
-                    onChange={(e) => setOverrideRank(e.target.checked)}
+                    checked={showDescriptions}
+                    onChange={(e) => setShowDescriptions(e.target.checked)}
                   />
-                  Override Rank
+                  Descriptions
                 </label>
               </div>
             </div>
@@ -417,15 +461,20 @@ export default function InventorySalesCalculator() {
             <h2 className="section-title">Cart</h2>
 
             <div style={{ color: "#aaa", fontSize: "13px", marginBottom: "12px" }}>
-              Employee: <strong style={{ color: "white" }}>{employee}</strong>
+              Cashier: <strong style={{ color: "white" }}>{employee}</strong>
+              <br />
+              Secondary:{" "}
+              <strong style={{ color: "white" }}>
+                {secondaryEmployee || "None"}
+              </strong>
               <br />
               Rank: <strong style={{ color: "white" }}>{currentRank}</strong>
               <br />
               Mode: <strong style={{ color: "white" }}>{mode}</strong>
               <br />
-              Override Rank:{" "}
+              Discount:{" "}
               <strong style={{ color: "white" }}>
-                {overrideRank ? "On" : "Off"}
+                {Number(discount) > 0 ? `${discount}%` : "None"}
               </strong>
             </div>
 
@@ -463,13 +512,23 @@ export default function InventorySalesCalculator() {
 
             <hr style={{ borderColor: "#333", margin: "16px 0" }} />
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontWeight: 900
-              }}
-            >
+            {Number(discount) > 0 && (
+              <>
+                <div className="cart-total-line">
+                  <span>Subtotal</span>
+                  <span className="money">${subtotal.toLocaleString()}</span>
+                </div>
+
+                <div className="cart-total-line">
+                  <span>Discount</span>
+                  <span style={{ color: "#ff7777", fontWeight: 900 }}>
+                    -${discountAmount.toLocaleString()}
+                  </span>
+                </div>
+              </>
+            )}
+
+            <div className="cart-total-line final">
               <span>Total</span>
               <span className="money">${cartTotal.toLocaleString()}</span>
             </div>
