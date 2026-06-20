@@ -43,6 +43,9 @@ export default function InventorySalesCalculator() {
   const [shiftTotal, setShiftTotal] = React.useState(saved?.shiftTotal || 0);
   const [shiftItems, setShiftItems] = React.useState(saved?.shiftItems || {});
   const [showShift, setShowShift] = React.useState(saved?.showShift || false);
+  const [showDescriptions, setShowDescriptions] = React.useState(
+    saved?.showDescriptions ?? true
+  );
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState("");
 
@@ -72,7 +75,7 @@ export default function InventorySalesCalculator() {
   }, []);
 
   const currentEmployee = employees.find((e) => e.name === employee);
-  const currentRank = currentEmployee?.rank || "Gakusei";
+  const currentRank = currentEmployee?.rank || "New Hire";
 
   React.useEffect(() => {
     localStorage.setItem(
@@ -83,10 +86,19 @@ export default function InventorySalesCalculator() {
         cart,
         shiftTotal,
         shiftItems,
-        showShift
+        showShift,
+        showDescriptions
       })
     );
-  }, [employee, mode, cart, shiftTotal, shiftItems, showShift]);
+  }, [
+    employee,
+    mode,
+    cart,
+    shiftTotal,
+    shiftItems,
+    showShift,
+    showDescriptions
+  ]);
 
   const canSeeItem = (item) => {
     const employeeRankValue = RANK_VALUE[currentRank] || 1;
@@ -264,8 +276,6 @@ export default function InventorySalesCalculator() {
     localStorage.removeItem("inventory_shift");
   };
 
-  
-
   const filteredItems = (items) =>
     items.filter((item) =>
       item.name.toLowerCase().includes(search.toLowerCase())
@@ -276,7 +286,9 @@ export default function InventorySalesCalculator() {
       const price = getItemPrice(item);
       const descriptionText = String(item.description || "").trim();
       const hasDescription =
-        descriptionText !== "" && descriptionText !== "0";
+        showDescriptions &&
+        descriptionText !== "" &&
+        descriptionText !== "0";
 
       return (
         <button
@@ -375,6 +387,15 @@ export default function InventorySalesCalculator() {
               Mode: <strong style={{ color: "white" }}>{mode}</strong>
             </div>
 
+            <label className="toggle-setting">
+              <input
+                type="checkbox"
+                checked={showDescriptions}
+                onChange={(e) => setShowDescriptions(e.target.checked)}
+              />
+              Show Descriptions
+            </label>
+
             {cart.length === 0 && (
               <div style={{ color: "#777", marginBottom: "12px" }}>Empty</div>
             )}
@@ -431,8 +452,6 @@ export default function InventorySalesCalculator() {
             <button className="btn blue" onClick={() => setShowShift(!showShift)}>
               Shift Earnings
             </button>
-
-            
 
             <button className="btn red" onClick={endShift}>
               End Shift
