@@ -37,16 +37,27 @@ export default function InventorySalesCalculator() {
   const [employees, setEmployees] = React.useState([]);
   const [employee, setEmployee] = React.useState(saved?.employee || "");
   const [mode, setMode] = React.useState(saved?.mode || "Day");
+
   const [allItems, setAllItems] = React.useState([]);
   const [itemsLoading, setItemsLoading] = React.useState(true);
+
   const [cart, setCart] = React.useState(saved?.cart || []);
   const [shiftTotal, setShiftTotal] = React.useState(saved?.shiftTotal || 0);
   const [shiftItems, setShiftItems] = React.useState(saved?.shiftItems || {});
   const [showShift, setShowShift] = React.useState(saved?.showShift || false);
+
   const [showDescriptions, setShowDescriptions] = React.useState(
     saved?.showDescriptions ?? true
   );
-  const [search, setSearch] = React.useState("");
+
+  const [compactCards, setCompactCards] = React.useState(
+    saved?.compactCards ?? false
+  );
+
+  const [overrideRank, setOverrideRank] = React.useState(
+    saved?.overrideRank ?? false
+  );
+
   const [status, setStatus] = React.useState("");
 
   React.useEffect(() => {
@@ -87,7 +98,9 @@ export default function InventorySalesCalculator() {
         shiftTotal,
         shiftItems,
         showShift,
-        showDescriptions
+        showDescriptions,
+        compactCards,
+        overrideRank
       })
     );
   }, [
@@ -97,16 +110,21 @@ export default function InventorySalesCalculator() {
     shiftTotal,
     shiftItems,
     showShift,
-    showDescriptions
+    showDescriptions,
+    compactCards,
+    overrideRank
   ]);
 
   const canSeeItem = (item) => {
     const employeeRankValue = RANK_VALUE[currentRank] || 1;
     const itemRankValue = RANK_VALUE[item.minRank] || 1;
+
     return employeeRankValue >= itemRankValue;
   };
 
-  const visibleItems = allItems.filter(canSeeItem);
+  const visibleItems = overrideRank
+    ? allItems
+    : allItems.filter(canSeeItem);
 
   const getItemPrice = (item) => {
     return mode === "Night" ? item.nightPrice : item.dayPrice;
@@ -276,17 +294,14 @@ export default function InventorySalesCalculator() {
     localStorage.removeItem("inventory_shift");
   };
 
-  const filteredItems = (items) =>
-    items.filter((item) =>
-      item.name.toLowerCase().includes(search.toLowerCase())
-    );
-
   const renderItems = (items) =>
-    filteredItems(items).map((item) => {
+    items.map((item) => {
       const price = getItemPrice(item);
       const descriptionText = String(item.description || "").trim();
+
       const hasDescription =
         showDescriptions &&
+        !compactCards &&
         descriptionText !== "" &&
         descriptionText !== "0";
 
@@ -319,7 +334,7 @@ export default function InventorySalesCalculator() {
   })).filter((section) => section.items.length > 0);
 
   return (
-    <div className="app">
+    <div className={`app ${compactCards ? "compact" : ""}`}>
       <div className="container">
         <h1 className="title">Inventory Sales Calculator</h1>
 
@@ -328,7 +343,7 @@ export default function InventorySalesCalculator() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "180px 180px 1fr",
+                gridTemplateColumns: "220px 180px auto",
                 gap: "12px"
               }}
             >
@@ -353,12 +368,34 @@ export default function InventorySalesCalculator() {
                 <option value="Night">Night Prices</option>
               </select>
 
-              <input
-                className="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search items..."
-              />
+              <div className="top-toggle-row">
+                <label className="toggle-setting">
+                  <input
+                    type="checkbox"
+                    checked={showDescriptions}
+                    onChange={(e) => setShowDescriptions(e.target.checked)}
+                  />
+                  Descriptions
+                </label>
+
+                <label className="toggle-setting">
+                  <input
+                    type="checkbox"
+                    checked={compactCards}
+                    onChange={(e) => setCompactCards(e.target.checked)}
+                  />
+                  Compact
+                </label>
+
+                <label className="toggle-setting">
+                  <input
+                    type="checkbox"
+                    checked={overrideRank}
+                    onChange={(e) => setOverrideRank(e.target.checked)}
+                  />
+                  Override Rank
+                </label>
+              </div>
             </div>
 
             {itemsLoading && (
@@ -385,16 +422,12 @@ export default function InventorySalesCalculator() {
               Rank: <strong style={{ color: "white" }}>{currentRank}</strong>
               <br />
               Mode: <strong style={{ color: "white" }}>{mode}</strong>
+              <br />
+              Override Rank:{" "}
+              <strong style={{ color: "white" }}>
+                {overrideRank ? "On" : "Off"}
+              </strong>
             </div>
-
-            <label className="toggle-setting">
-              <input
-                type="checkbox"
-                checked={showDescriptions}
-                onChange={(e) => setShowDescriptions(e.target.checked)}
-              />
-              Show Descriptions
-            </label>
 
             {cart.length === 0 && (
               <div style={{ color: "#777", marginBottom: "12px" }}>Empty</div>
