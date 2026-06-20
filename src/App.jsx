@@ -2,7 +2,7 @@ import React from "react";
 import "./App.css";
 
 const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzuLCb8pZgmCr6_foBNa-cVcZCbw75jkt_ev0pPuuqhfWwT_5NMwQhsrvWFPCTQVHj0/exec";
+  "https://script.google.com/macros/s/AKfycbxO8ydRJWye21OQj0O-lD9_5xkiRqjonW1xqKrQaQnOCyCa9F4eKq_YhkaJpQXluhu2/exec";
 
 const GROUP_ORDER = [
   "Digi Basics",
@@ -15,11 +15,11 @@ const GROUP_ORDER = [
 ];
 
 const RANK_VALUE = {
-  Gakusei: 1,
-  Shatei: 2,
-  Hohei: 3,
-  Kyodai: 4,
-  Kirika: 5
+  "New Hire": 1,
+  Employee: 2,
+  "Adv Employee": 3,
+  Manager: 4,
+  Owner: 5
 };
 
 export default function InventorySalesCalculator() {
