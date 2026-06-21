@@ -16,10 +16,15 @@ const GROUP_ORDER = [
 
 const RANK_VALUE = {
   "New Hire": 1,
+  Gakusei: 1,
   Employee: 2,
+  Shatei: 2,
   "Adv Employee": 3,
+  Hohei: 3,
   Manager: 4,
-  Owner: 5
+  Kyodai: 4,
+  Owner: 5,
+  Kirika: 5
 };
 
 const DISCOUNTS = [
@@ -75,14 +80,15 @@ export default function InventorySalesCalculator() {
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        const res = await fetch(`${GOOGLE_SCRIPT_URL}?t=${Date.now()}`);
+        const res = await fetch(GOOGLE_SCRIPT_URL + "?t=" + Date.now());
         const data = await res.json();
+        const loadedEmployees = data.employees || [];
 
         setAllItems(data.items || []);
-        setEmployees(data.employees || []);
+        setEmployees(loadedEmployees);
 
-        if (!saved?.employee && data.employees?.length > 0) {
-          setEmployee(data.employees[0].name);
+        if (!saved?.employee && loadedEmployees.length > 0) {
+          setEmployee(loadedEmployees[0].name);
         }
 
         setStatus("Sheet data loaded.");
@@ -97,15 +103,81 @@ export default function InventorySalesCalculator() {
     loadData();
   }, []);
 
-  const currentEmployee = employees.find((e) => e.name === employee);
+  const getFullEmployeeName = React.useCallback(
+    (name, fallbackToFirst = true) => {
+      const cleanName = String(name || "").trim().toLowerCase();
+
+      if (!cleanName || employees.length === 0) {
+        return fallbackToFirst ? employees[0]?.name || "" : "";
+      }
+
+      const exactMatch = employees.find(
+        (emp) => String(emp.name || "").trim().toLowerCase() === cleanName
+      );
+
+      if (exactMatch) {
+        return exactMatch.name;
+      }
+
+      const firstNameMatches = employees.filter((emp) => {
+        const fullName = String(emp.name || "").trim().toLowerCase();
+        const firstName = fullName.split(/\s+/)[0];
+        return firstName === cleanName;
+      });
+
+      if (firstNameMatches.length === 1) {
+        return firstNameMatches[0].name;
+      }
+
+      return fallbackToFirst ? employees[0]?.name || "" : "";
+    },
+    [employees]
+  );
+
+  React.useEffect(() => {
+    if (employees.length === 0) {
+      return;
+    }
+
+    const fixedEmployee = getFullEmployeeName(employee, true);
+
+    if (fixedEmployee && fixedEmployee !== employee) {
+      setEmployee(fixedEmployee);
+    }
+
+    if (secondaryEmployee) {
+      const fixedSecondaryEmployee = getFullEmployeeName(
+        secondaryEmployee,
+        false
+      );
+
+      if (
+        fixedSecondaryEmployee &&
+        fixedSecondaryEmployee !== secondaryEmployee
+      ) {
+        setSecondaryEmployee(fixedSecondaryEmployee);
+      }
+
+      if (!fixedSecondaryEmployee) {
+        setSecondaryEmployee("");
+      }
+    }
+  }, [employees, employee, secondaryEmployee, getFullEmployeeName]);
+
+  const fullEmployeeName = getFullEmployeeName(employee, true);
+  const fullSecondaryEmployeeName = secondaryEmployee
+    ? getFullEmployeeName(secondaryEmployee, false)
+    : "";
+
+  const currentEmployee = employees.find((e) => e.name === fullEmployeeName);
   const currentRank = currentEmployee?.rank || "New Hire";
 
   React.useEffect(() => {
     localStorage.setItem(
       "inventory_shift",
       JSON.stringify({
-        employee,
-        secondaryEmployee,
+        employee: fullEmployeeName || employee,
+        secondaryEmployee: fullSecondaryEmployeeName,
         mode,
         discount,
         cart,
@@ -120,6 +192,8 @@ export default function InventorySalesCalculator() {
   }, [
     employee,
     secondaryEmployee,
+    fullEmployeeName,
+    fullSecondaryEmployeeName,
     mode,
     discount,
     cart,
@@ -210,17 +284,30 @@ export default function InventorySalesCalculator() {
   const completeSale = async () => {
     if (cart.length === 0) return;
 
-    if (!employee) {
+    const cashierName = getFullEmployeeName(employee, true);
+    const secondaryName = secondaryEmployee
+      ? getFullEmployeeName(secondaryEmployee, false)
+      : "";
+
+    if (!cashierName) {
       alert("Select a cashier first.");
       return;
+    }
+
+    if (cashierName !== employee) {
+      setEmployee(cashierName);
+    }
+
+    if (secondaryEmployee && secondaryName !== secondaryEmployee) {
+      setSecondaryEmployee(secondaryName);
     }
 
     setStatus("Sending sale...");
 
     const saleData = {
       type: "sale",
-      employee,
-      secondaryEmployee,
+      employee: cashierName,
+      secondaryEmployee: secondaryName,
       subtotal,
       discount: Number(discount),
       discountAmount,
@@ -240,7 +327,7 @@ export default function InventorySalesCalculator() {
       const updated = { ...prev };
 
       cart.forEach((item) => {
-        const key = `${item.name}|${item.mode}|${item.price}`;
+        const key = item.name + "|" + item.mode + "|" + item.price;
 
         if (!updated[key]) {
           updated[key] = {
@@ -275,15 +362,33 @@ export default function InventorySalesCalculator() {
       return;
     }
 
+    const cashierName = getFullEmployeeName(employee, true);
+    const secondaryName = secondaryEmployee
+      ? getFullEmployeeName(secondaryEmployee, false)
+      : "";
+
+    if (!cashierName) {
+      alert("Select a cashier first.");
+      return;
+    }
+
     const ok = window.confirm("End shift and submit shift summary?");
     if (!ok) return;
+
+    if (cashierName !== employee) {
+      setEmployee(cashierName);
+    }
+
+    if (secondaryEmployee && secondaryName !== secondaryEmployee) {
+      setSecondaryEmployee(secondaryName);
+    }
 
     setStatus("Ending shift...");
 
     const shiftData = {
       type: "shift_end",
-      employee,
-      secondaryEmployee,
+      employee: cashierName,
+      secondaryEmployee: secondaryName,
       shiftTotal,
       items: Object.values(shiftItems)
     };
@@ -327,7 +432,7 @@ export default function InventorySalesCalculator() {
 
       return (
         <button
-          key={`${item.group}-${item.name}`}
+          key={item.group + "-" + item.name}
           className="item-card"
           onClick={() => addToCart(item)}
         >
@@ -354,7 +459,7 @@ export default function InventorySalesCalculator() {
   })).filter((section) => section.items.length > 0);
 
   return (
-    <div className={`app ${compactCards ? "compact" : ""}`}>
+    <div className={"app " + (compactCards ? "compact" : "")}>
       <div className="container">
         <h1 className="title">Inventory Sales Calculator</h1>
 
@@ -461,11 +566,14 @@ export default function InventorySalesCalculator() {
             <h2 className="section-title">Cart</h2>
 
             <div style={{ color: "#aaa", fontSize: "13px", marginBottom: "12px" }}>
-              Cashier: <strong style={{ color: "white" }}>{employee}</strong>
+              Cashier:{" "}
+              <strong style={{ color: "white" }}>
+                {fullEmployeeName || employee}
+              </strong>
               <br />
               Secondary:{" "}
               <strong style={{ color: "white" }}>
-                {secondaryEmployee || "None"}
+                {fullSecondaryEmployeeName || "None"}
               </strong>
               <br />
               Rank: <strong style={{ color: "white" }}>{currentRank}</strong>
@@ -474,7 +582,7 @@ export default function InventorySalesCalculator() {
               <br />
               Discount:{" "}
               <strong style={{ color: "white" }}>
-                {Number(discount) > 0 ? `${discount}%` : "None"}
+                {Number(discount) > 0 ? discount + "%" : "None"}
               </strong>
             </div>
 
@@ -484,7 +592,7 @@ export default function InventorySalesCalculator() {
 
             {cart.map((item) => (
               <div
-                key={`${item.name}-${item.mode}-${item.price}`}
+                key={item.name + "-" + item.mode + "-" + item.price}
                 className="cart-row"
               >
                 <span>
@@ -563,7 +671,7 @@ export default function InventorySalesCalculator() {
 
                 {Object.values(shiftItems).map((item) => (
                   <div
-                    key={`${item.name}-${item.mode}-${item.price}`}
+                    key={item.name + "-" + item.mode + "-" + item.price}
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
